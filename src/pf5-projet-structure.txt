@@ -1,0 +1,33 @@
+- les colonnes : piles de cartes -> liste card
+- les registres temporaires: contient une seul carte ou est vide. -> card option
+- un depôt : 4 piles initalement vides, une pour chaque couleur, la positions des cartes et par ordre croissant -> 
+on sauvgarde le nombre de carte de chaque depôt (1 à 13) (si tout les depôt sont a 13 la partie est gagnée) ->
+type depot=
+  | Coeur of int
+  | Pique of int
+  | Carre of int
+  | Trefle of int
+;;
+
+-les MODES de solitaires qu'on va traiter : 
+FreeCell
+Seahaven
+Midnight Oil 
+Baker's Dozen
+
+PARTIE I :
+--------
+-lire nom partie (format : 'Mode.Graine')
+-deduire configuration initiale et l'afficher
+-placer les cartes dans les colonnes (d'apres le MODE de jeu)
+
+
+
+
+
+
+
+
+
+
+

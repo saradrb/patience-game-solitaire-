@@ -121,3 +121,14 @@ let shuffle_test = function
 
 let shuffle n =
   shuffle_test n (* TODO: changer en une implementation complete *)
+
+  (*
+  a) Créer tout d'abord les 55 premières paires suivantes:
+  * premières composantes : 0 pour la premiere paire,
+    puis ajouter 21 modulo 55 à chaque fois
+  * secondes composantes : graine, puis 1, puis les "différences"
+    successives entre les deux dernières secondes composantes.
+    Par "différence" entre a et b on entend
+      - Ou bien (a-b) si b<=a
+      - Ou bien (a-b+randmax) si a<b
+  *)
