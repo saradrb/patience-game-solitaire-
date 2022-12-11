@@ -1,5 +1,7 @@
-- les colonnes : piles de cartes -> liste card
+- les colonnes : piles de cartes (remplie de tout les cartes au debut)-> liste card
+
 - les registres temporaires: contient une seul carte ou est vide. -> card option
+
 - un depôt : 4 piles initalement vides, une pour chaque couleur, la positions des cartes et par ordre croissant -> 
 on sauvgarde le nombre de carte de chaque depôt (1 à 13) (si tout les depôt sont a 13 la partie est gagnée) ->
 type depot=
@@ -20,6 +22,47 @@ PARTIE I :
 -lire nom partie (format : 'Mode.Graine')
 -deduire configuration initiale et l'afficher
 -placer les cartes dans les colonnes (d'apres le MODE de jeu)
+
+Fichier du projet :
+-------------------
+
+*XpatRandom.ml : algorithme de generation des permutations (+ test de l'algorithme)
+
+*XpatRandomExemple.ml : exemple des resultat de chaque etape de l'algorithme de generation des permutations
+
+*Card.ml : 
+	-Structure Card -> (rank(int) , suit (Trefle | Pique | Coeur | Carreau))
+ 	-Fonctions qui donnent a chaque suit (Trefle | Pique | Coeur | Carreau) son nombre et inversement
+	-Fonctions qui donnent a chaque card son nombre et inversement
+ 	-Fonctions qui donnent a chaque suit (Trefle | Pique | Coeur | Carreau) son string et inversement
+	-Fonction qui donne a chaque card son string
+
+*FArray.ml : Redefinition de la structure Array en tableau fonctionnels de taille fix.
+
+*AArray.ml : Redefinition de la structure Array en tableau immuable.
+
+- Les complexitées des fonction de FArray et AArray sont différents (voir les fichiers .mli)
+- Pour voir les fonctions redefinie voir les fichiers .mli
+- Pour voir ce que font les fonctions : https://v2.ocaml.org/api/Array.html
+
+
+---------------------------
+
+* Tâches a faires :
+- Implementer l'algorithme shuffle de XpatRandom
+- Implementer les structure des colonnes, registres temporaires, des depôt ...ect
+- Implementer des fonctions de manipulation pour nous aider plus tard (comme ajout/suppression d'une carte dans un registre/depôt, deplacer une carte ...ect)
+- Implementer le rangement des cartes dans les colonnes d'apres le mode de jeu (on prend en argument la liste des 55 cartes et on utilise les fonctions crée dans l'etape d'avant pour les ajouter dans les registres)
+(pour nous aider) avant l'implementation du rangement des cartes dans les colonnes : faire un resumé des regle de jeu de chaque mode dans ce .txt
+
+
+*idée : on peut utiliser FArray ou AArray pour representer nos colonnes -> on aura des AArray (ou FArray) de registre (même chose pour les regitres, depôt ..ect)
+
+
+
+
+	
+
 
 
 
