@@ -1,7 +1,7 @@
 open Card
 open Fifo
-type colonne={capacity:int;size:int;cards :Fifo of Card}
 
+type colonne= {capacity : int; size : int; cards: card Fifo.t}
 
 
 let init capacity=
@@ -11,13 +11,13 @@ let init capacity=
 
 let add card c = match c with 
   |(capacity,size,cards) -> 
-    if (size < capacity) then let cards= Card.push card cards in (capacity,size+1,cards)
-    else raise "colonne is full"
+    if (size < capacity) then let cards= Fifo.push card cards in (capacity,size+1,cards)
+    else failwith "colonne is full"
 ;;
 
 let remove card c = match c with 
-  |(capacity,size,cards)->let card= Card.pop card cards in (capasity,size-1,cards)
-  |failwith "this is not a colonne"
+  |(capacity,size,cards)->let card= Fifo.pop cards in (capacity,size-1,cards)
+  |_ -> failwith "this is not a colonne"
 ;;
 
 let isFull c = 
