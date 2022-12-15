@@ -132,3 +132,71 @@ let shuffle n =
       - Ou bien (a-b) si b<=a
       - Ou bien (a-b+randmax) si a<b
   *)
+
+  
+  let init n =
+  let init_first_composant list =
+    let rec  init_first_composant_aux list pre index=
+      match list with 
+      |[] -> [] 
+      |(x,y) :: list' -> 
+          let x' = 
+            if index = 0 then 0
+            else (pre + 21) mod 55
+          in (x',y) :: init_first_composant_aux list' x' (index + 1)
+    in init_first_composant_aux list 0 0
+        
+  in 
+  let init_second_composant list graine= 
+    let rec  init_second_composant_aux list graine a b index=
+      match list with 
+      |[] -> [] 
+      |(x,y) :: list' -> 
+          let y' = 
+            if index = 0 then graine 
+            else if index = 1 then 1
+            else if b <= a then a - b
+            else a - b + randmax
+          in (x,y') :: init_second_composant_aux list' graine b y' (index + 1)
+               
+    in init_second_composant_aux list graine 0 0 0 
+  in
+  init_second_composant (init_first_composant (List.init 55 (fun _ -> (0,0)))) n
+;; 
+
+(*trie une liste de tuple par ordre croissant selon leurs premières composantes*)
+let rec quicksort_tuple l =
+  (*renvoie une liste qui supprime les element plus grand strictement que k*)
+  let rec delete_higher l k = 
+    match l with 
+    |[] ->[]
+    |(x,y) :: l' -> if x <= k then (x,y) :: delete_higher l' k else delete_higher l' k
+  in
+  (*renvoie une liste qui supprime les element plus pletit que k*)
+  let rec delete_smaller l k = 
+    match l with 
+    |[] ->[]
+    |(x,y) :: l' -> if x > k then (x,y) :: delete_smaller l' k else delete_smaller l' k
+  in
+  match l with 
+  |[] -> []
+  |(x,y) :: l' -> (quicksort_tuple (delete_higher l' x)) @ [(x,y)] @ (quicksort_tuple (delete_smaller l' x)) 
+;;
+
+let separate l k= 
+  let rec separate_aux l debut fin index=
+    match l with 
+    |[] -> failwith "liste trop petit"
+    |e :: l' -> fdex < k
+then separate_aux (List.append l' [e]) k (index + 1)
+else [] 
+in separate_aux l k 0
+;; 
+
+let f1_init l= 
+  t.tolist (separate (quicksort_tuple l) 24)
+;; 
+
+let f2_init =  
+  t.tolist (separate (f1_init l) 31)
+;; 
