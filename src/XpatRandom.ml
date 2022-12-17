@@ -1,76 +1,124 @@
-(** In Xpat2, the index of the game is a seed used to shuffle
-    pseudo-randomly the cards.
-    The shuffle function emulates this permutation generator.
-    The input number is the seed (between 1 and 999_999_999).
-    The output list is of size 52, and contains all numbers in 0..51
-    (hence without duplicates).
+open Fifo
+open Printf
 
-*)
-
-(* The numbers manipulated below will be in [0..randmax[ *)
 let randmax = 1_000_000_000
 
-(* Converting an integer n in [0..randmax[ to an integer in [0..limit[ *)
 let reduce n limit =
   Int.(of_float (to_float n /. to_float randmax *. to_float limit))
 
+let init n =
+  (*initalier les premiers composants des paires*)
+  let init_first_composant list =
+    let rec  init_first_composant_aux list pre index=
+      match list with 
+      |[] -> [] 
+      |(x,y) :: list' -> 
+          let x' = 
+            if index = 0 then 0
+            else (pre + 21) mod 55
+          in (x',y) :: init_first_composant_aux list' x' (index + 1)
+    in init_first_composant_aux list 0 0
+  in 
+  (*a initalier les seconds composants des paires*)
+  let init_second_composant list graine= 
+    let rec  init_second_composant_aux list graine a b index=
+      match list with 
+      |[] -> [] 
+      |(x,y) :: list' -> 
+          let y' = 
+            if index = 0 then graine 
+            else if index = 1 then 1
+            else if b <= a then a - b
+            else a - b + randmax
+          in (x,y') :: init_second_composant_aux list' graine b y' (index + 1)
+               
+    in init_second_composant_aux list graine 0 0 0 
+  in
+  init_second_composant (init_first_composant (List.init 55 (fun _ -> (0,0)))) n
 
-(** DESCRIPTION DE L'ALGORITHME DE GENERATION DES PERMUTATIONS
+let rec quicksort_tuple l =
+  (*renvoie une liste qui supprime les element plus grand strictement que k*)
+  let rec delete_higher l k = 
+    match l with 
+    |[] ->[]
+    |(x,y) :: l' -> if x <= k then (x,y) :: delete_higher l' k else delete_higher l' k
+  in
+  (*renvoie une liste qui supprime les element plus pletit que k*)
+  let rec delete_smaller l k = 
+    match l with 
+    |[] ->[]
+    |(x,y) :: l' -> if x > k then (x,y) :: delete_smaller l' k else delete_smaller l' k
+  in
+  match l with 
+  |[] -> []
+  |(x,y) :: l' -> (quicksort_tuple (delete_higher l' x)) @ [(x,y)] @ (quicksort_tuple (delete_smaller l' x)) 
 
-a) Créer tout d'abord les 55 premières paires suivantes:
-  * premières composantes : 0 pour la premiere paire,
-    puis ajouter 21 modulo 55 à chaque fois
-  * secondes composantes : graine, puis 1, puis les "différences"
-    successives entre les deux dernières secondes composantes.
-    Par "différence" entre a et b on entend
-      - Ou bien (a-b) si b<=a
-      - Ou bien (a-b+randmax) si a<b
+let get_sublist_of_firstcomponent l debut fin= 
+  let rec aux l debut fin index=
+    match l with 
+    |[] -> []
+    |(x,y) :: l' -> 
+        if debut > index
+        then aux l' debut fin (index + 1)
+        else if fin >= index
+        then y :: (aux l' debut fin (index + 1))
+        else []
+  in aux l debut fin 1
 
-b) Trier ces 55 paires par ordre croissant selon leurs premières composantes,
-   puis séparer entre les 24 premières paires et les 31 suivantes.
-   Pour les 31 paires, leurs secondes composantes sont à mettre dans
-   une FIFO f1_init, dans cet ordre (voir `Fifo.of_list` documenté dans
-   `Fifo.mli`). De même pour les 24 paires, leurs secondes composantes sont
-   à mettre dans une FIFO f2_init, dans cet ordre.
+let f_init l debut fin=  
+  Fifo.of_list (get_sublist_of_firstcomponent (quicksort_tuple l) debut fin)
 
-c) Un *tirage* à partir de deux FIFO (f1,f2) consiste à prendre
-   leurs premières valeurs respectives n1 et n2 (cf `Fifo.pop`),
-   puis calculer la "différence" de n1 et n2 (comme auparavant),
-   nommons-la d. Ce d est alors le résultat du tirage, associé
-   à deux nouvelles FIFO constituées des restes des anciennes FIFO
-   auxquelles on a rajouté respectivement n2 et d (cf `Fifo.push`).
+let tirage f1 f2= 
+  let (n1, newf1) = Fifo.pop f1 in
+  let (n2, newf2) = Fifo.pop f2 in
+  let d = if n1 > n2 then n1 - n2 else n1 - n2 + randmax in
+  (Fifo.push n2 newf1, Fifo.push d newf2, d)
 
-d) On commence alors par faire 165 tirages successifs en partant
-   de (f1_init,f2_init). Ces tirages servent juste à mélanger encore
-   les FIFO qui nous servent d'état de notre générateur pseudo-aléatoire,
-   les entiers issus de ces 165 premiers tirages ne sont pas considérés.
+let tirage_k k f1 f2= 
+  let rec tirage_k_aux k f1 f2 res=
+    if k = 0
+      then 
+        (f1,f2,res) 
+      else
+        let (newf1, newf2, d) = tirage f1 f2 in 
+        tirage_k_aux (k-1) newf1 newf2 (Fifo.push d res)
+  in
+  tirage_k_aux k f1 f2 Fifo.empty
 
-e) La fonction de tirage vue précédemment produit un entier dans
-   [0..randmax[. Pour en déduire un entier dans [0..limit[ (ou limit est
-   un entier positif quelconque), on utilisera alors la fonction `reduce`
-   fournie plus haut.
-   Les tirages suivants nous servent à créer la permutation voulue des
-   52 cartes. On commence avec une liste des nombres successifs entre 0 et 51.
-   Un tirage dans [0..52[ nous donne alors la position du dernier nombre
-   à mettre dans notre permutation. On enlève alors le nombre à cette position
-   dans la liste. Puis un tirage dans [0..51[ nous donne la position
-   (dans la liste restante) de l'avant-dernier nombre de notre permutation.
-   On continue ainsi à tirer des positions valides dans la liste résiduelle,
-   puis à retirer les nombres à ces positions tirées pour les ajouter devant
-   la permutation, jusqu'à épuisement de la liste. Le dernier nombre retiré
-   de la liste donne donc la tête de la permutation.
+let reduce_list l limit=
+  List.mapi (fun index e -> reduce e (limit - index)) l
 
-   NB: /!\ la version initiale de ce commentaire donnait par erreur
-   la permutation dans l'ordre inverse).
+let permutation l= 
+    let rec permutation_aux l l_ensemble= 
+    match l with 
+    |[] -> [] 
+    |e :: l' -> 
+      let nbr = (List.nth l_ensemble e) in 
+      List.append (permutation_aux l' (List.filter (fun x -> x <> nbr) l_ensemble)) [nbr]
+  in
+  permutation_aux l (List.init 52 (fun index -> index))
 
-Un exemple complet de génération d'une permutation (pour la graine 1)
-est maintenant donné dans le fichier XpatRandomExemple.ml, étape par étape.
+(*---------------------------------------------------*)
 
-*)
+let shuffle n =
+  (*a : creation d'une liste des paires*)
+  let paires = init n in
+  (*b : creation des FIFO initiales*)
+  let f1_init = f_init paires 1 24 
+  and f2_init = f_init paires 25 55 in
+  (*c,d : 165 tirages d'initialisation*)
+  let (f1_165, f2_165, ignored_165) = tirage_k 165 f2_init f1_init in
+  (*e*)
+  (*52 tirages suivants*)
+  let (_ , _, tirages_52) = tirage_k 52 f1_165 f2_165 in
+  (*reduire la liste des 52 tirages*)
+  let reduced_52 = reduce_list (Fifo.to_list tirages_52) 52 in
+  (*permutation de la liste des 52 tirages reduite*)
+  permutation reduced_52
+;; 
 
-(* For now, we provide a shuffle function that can handle a few examples.
-   This can be kept later for testing your implementation. *)
 
+(* 
 let shuffle_test = function
   | 1 ->
      [13;32;33;35;30;46;7;29;9;48;38;36;51;41;26;20;23;43;27;
@@ -117,86 +165,5 @@ let shuffle_test = function
       46;10;25;35;39;48;51;40;33;13;42;16;32;50;24;47;26;6;34;
       45;5;3;41;15;12;31;17;28;8;29;30;37]
   | _ -> failwith "shuffle : unsupported number (TODO)"
-
-
-let shuffle n =
-  shuffle_test n (* TODO: changer en une implementation complete *)
-
-  (*
-  a) Créer tout d'abord les 55 premières paires suivantes:
-  * premières composantes : 0 pour la premiere paire,
-    puis ajouter 21 modulo 55 à chaque fois
-  * secondes composantes : graine, puis 1, puis les "différences"
-    successives entre les deux dernières secondes composantes.
-    Par "différence" entre a et b on entend
-      - Ou bien (a-b) si b<=a
-      - Ou bien (a-b+randmax) si a<b
-  *)
-
-  
-  let init n =
-  let init_first_composant list =
-    let rec  init_first_composant_aux list pre index=
-      match list with 
-      |[] -> [] 
-      |(x,y) :: list' -> 
-          let x' = 
-            if index = 0 then 0
-            else (pre + 21) mod 55
-          in (x',y) :: init_first_composant_aux list' x' (index + 1)
-    in init_first_composant_aux list 0 0
-        
-  in 
-  let init_second_composant list graine= 
-    let rec  init_second_composant_aux list graine a b index=
-      match list with 
-      |[] -> [] 
-      |(x,y) :: list' -> 
-          let y' = 
-            if index = 0 then graine 
-            else if index = 1 then 1
-            else if b <= a then a - b
-            else a - b + randmax
-          in (x,y') :: init_second_composant_aux list' graine b y' (index + 1)
-               
-    in init_second_composant_aux list graine 0 0 0 
-  in
-  init_second_composant (init_first_composant (List.init 55 (fun _ -> (0,0)))) n
 ;; 
-
-(*trie une liste de tuple par ordre croissant selon leurs premières composantes*)
-let rec quicksort_tuple l =
-  (*renvoie une liste qui supprime les element plus grand strictement que k*)
-  let rec delete_higher l k = 
-    match l with 
-    |[] ->[]
-    |(x,y) :: l' -> if x <= k then (x,y) :: delete_higher l' k else delete_higher l' k
-  in
-  (*renvoie une liste qui supprime les element plus pletit que k*)
-  let rec delete_smaller l k = 
-    match l with 
-    |[] ->[]
-    |(x,y) :: l' -> if x > k then (x,y) :: delete_smaller l' k else delete_smaller l' k
-  in
-  match l with 
-  |[] -> []
-  |(x,y) :: l' -> (quicksort_tuple (delete_higher l' x)) @ [(x,y)] @ (quicksort_tuple (delete_smaller l' x)) 
-;;
-
-let separate l k= 
-  let rec separate_aux l debut fin index=
-    match l with 
-    |[] -> failwith "liste trop petit"
-    |e :: l' -> fdex < k
-then separate_aux (List.append l' [e]) k (index + 1)
-else [] 
-in separate_aux l k 0
-;; 
-
-let f1_init l= 
-  t.tolist (separate (quicksort_tuple l) 24)
-;; 
-
-let f2_init =  
-  t.tolist (separate (f1_init l) 31)
-;; 
+*)
