@@ -1,0 +1,1 @@
+(executables (names src/XpatSolver.exe))
