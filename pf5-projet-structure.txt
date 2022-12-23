@@ -56,7 +56,7 @@ Fichier du projet :
 (pour nous aider) avant l'implementation du rangement des cartes dans les colonnes : faire un resumé des regle de jeu de chaque mode dans ce .txt
 
 
-*idée : on peut utiliser FArray ou AArray pour representer nos colonnes -> on aura des AArray (ou FArray) de registre (même chose pour les regitres, depôt ..ect)
+*idée : on peut utiliser FArray ou AArray pour representer nos colonnes -> on aura des Array (ou FArray) de registre (même chose pour les regitres, depôt ..ect)
 
 
 

@@ -1,10 +1,10 @@
-
 open XpatLib
-open Card
+
 
 type game = Freecell | Seahaven | Midnight | Baker
 
 type init_rule = {nb_col:int; nb_depots:int; nb_reg:int}
+
 type card = Card.card
 
 (* une colonne est une liste de cartes *)
@@ -51,33 +51,14 @@ let set_game_seed name =
                       "FreeCell Seahaven MidnightOil BakersDozen")
 
 
-let get_rule name = function 
+(* let get_rule name = function 
 |Freecell-> {nb_col=8;nb_depots=4;nb_reg=4}
 |Seahaven->{nb_col=10;nb_depots=4;nb_reg=4}
 |Midnight->{nb_col=18;nb_depots=4;nb_reg=0}
-|Baker ->{nb_col=13;nb_depots=4;nb_reg=0}
+|Baker ->{nb_col=13;nb_depots=4;nb_reg=0} *)
 
-let init_game name = match name with 
-|Freecell-> { 
-    depots=PArray.make 4 0;
-    registres= Some (PArray.make 4 (-1,Trefle));
-    colonnes=FArray.make 8 []} 
-|Seahaven->{ 
-    depots=PArray.make 4 0;
-    registres= Some (PArray.make 4  (-1,Trefle));
-    colonnes=FArray.make 8 []} 
 
-|Baker->{ 
-    depots=PArray.make 4 0;
-    registres=None;
-    colonnes=FArray.make 13 []} 
-|Midnight->{ 
-    depots=PArray.make 4 0;
-    registres=None;
-    colonnes=FArray.make 18 []} 
-  
-
-(*fonction qui remplie une colonne avec n cartes*)
+(* fonction qui remplie une colonne avec n cartes *)
 let rec fill_col col cards n=
   if n>0 then 
     match (col,cards) with 
@@ -158,23 +139,36 @@ let print_colonnes colonnes_tab =
   FArray.iter (fun col ->Printf.printf "COL: "; List.iter (fun card -> Printf.printf "%s " (Card.to_string card)) col;Printf.printf "\n" ) colonnes_tab
 
 (*initialistation du jeux et distribution des cartes*)
-let init_distribution etat name permut =  
+(* let init_distribution etat name permut =  
   let cards = List.map (fun a -> Card.of_num a) permut in 
   match name with 
   |Freecell-> distribution_fc etat cards
   |Seahaven-> distribution_sv etat cards 
   |Midnight-> distribution_md etat cards 
-  |Baker-> distribution_bk etat cards  
+  |Baker-> distribution_bk etat cards   *)
 
 
-
-
-
-
-
-
-
-
+  let init_game name permut = 
+  let cards = List.map (fun a -> Card.of_num a) permut in
+  match name with 
+  |Freecell-> distribution_fc { 
+      depots=PArray.make 4 0;
+      registres= Some (PArray.make 4 (-1,Card.Trefle));
+      colonnes=FArray.make 8 []} cards
+  |Seahaven-> distribution_sv { 
+      depots=PArray.make 4 0;
+      registres= Some (PArray.make 4  (-1,Card.Trefle));
+      colonnes=FArray.make 8 []} cards
+  
+  |Baker-> distribution_bk { 
+      depots=PArray.make 4 0;
+      registres=None;
+      colonnes=FArray.make 13 []} cards
+  |Midnight-> distribution_md { 
+      depots=PArray.make 4 0;
+      registres=None;
+      colonnes=FArray.make 18 []} cards
+    
 (* TODO : La fonction suivante est à adapter et continuer *)
 
 let treat_game conf =
@@ -184,33 +178,20 @@ let treat_game conf =
   print_newline ();
   List.iter (fun n -> Printf.printf "%s " (Card.to_string (Card.of_num n)))
     permut;
-
   print_newline ();
-<<<<<<< HEAD
-  init_distribution (init_game conf.game) conf.game permut;
-  (* print_colonnes etat.colonnes; *)
-
-
-  (* print_string "C'est tout pour l'instant. TODO: continuer...\n";
-  let cards=List.map (fun a->Card.of_num a) permut in 
-  print_colonnes (distribution_fc (init_game config.game ) cards);
-   *)
- 
-
-
-  (*print_string "C'est tout pour l'instant. TODO: continuer...\n";
-  let cards=List.map (fun a->Card.of_num a) permut in 
-  print_colonnes (distribution_fc (init_game config.game ) cards);
-   *)
+  (* print_string "C'est tout pour l'instant. TODO: continuer...\n";  *)
+  let etat=init_game conf.game permut in
+  print_colonnes etat.colonnes; 
+  exit 0
 
 let main () =
-  [("-check", String (fun filename -> config.mode <- Check filename),
-  "<filename>:\tValidate a solution file");
-("-search", String (fun filename -> config.mode <- Search filename),
-  "<filename>:\tSearch a solution and write it to a solution file")]
-set_game_seed (* pour les arguments seuls, sans option devant *)
-"XpatSolver <game>.<number> : search solution for Xpat2 game <number>";
-treat_game config
-
+  Arg.parse
+    [("-check", String (fun filename -> config.mode <- Check filename),
+        "<filename>:\tValidate a solution file");
+     ("-search", String (fun filename -> config.mode <- Search filename),
+        "<filename>:\tSearch a solution and write it to a solution file")]
+    set_game_seed (* pour les arguments seuls, sans option devant *)
+    "XpatSolver <game>.<number> : search solution for Xpat2 game <number>";
+  treat_game config
 
 let _ = if not !Sys.interactive then main () else ()
