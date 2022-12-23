@@ -1,5 +1,4 @@
-
-open XpatLib
+(* open XpatLib *)
 open Card
 
 type game = Freecell | Seahaven | Midnight | Baker
@@ -14,7 +13,6 @@ type colonne = Card.card List.t
 type depot= int PArray.t (* case 0:Trefle ; case 1:Pique ;case 2:Coeur ; case 3:Carreau *)
 
 (* registres est un tableau ou chaque case represente un registre qui contient une carte ou vide*)
-
 type registres = Card.card PArray.t
 
 
@@ -52,10 +50,10 @@ let set_game_seed name =
 
 
 let get_rule name = function 
-|Freecell-> {nb_col=8;nb_depots=4;nb_reg=4}
-|Seahaven->{nb_col=10;nb_depots=4;nb_reg=4}
-|Midnight->{nb_col=18;nb_depots=4;nb_reg=0}
-|Baker ->{nb_col=13;nb_depots=4;nb_reg=0}
+  |Freecell-> {nb_col=8;nb_depots=4;nb_reg=4}
+  |Seahaven->{nb_col=10;nb_depots=4;nb_reg=4}
+  |Midnight->{nb_col=18;nb_depots=4;nb_reg=0}
+  |Baker ->{nb_col=13;nb_depots=4;nb_reg=0}
 
 let init_game name = match name with 
 |Freecell-> { 
@@ -122,6 +120,7 @@ let distribution_md etat permut =
   in 
 {depots = depots; registres = None; colonnes = fill_all_col 18 colonnes permut}  
 
+
 (* distribution des cartes selon les regles de Baker dozen*)
 let distribution_bk etat permut =
   let {depots;registres;colonnes}= etat in
@@ -132,8 +131,6 @@ let distribution_bk etat permut =
 
   in 
 {depots = depots; registres = None; colonnes = fill_all_col 18 colonnes permut}  
-
-
 
 
 (* distribution des cartes selon les regles de FreeCell *)
@@ -177,7 +174,7 @@ let init_distribution etat name permut =
 
 (* TODO : La fonction suivante est à adapter et continuer *)
 
-let treat_game conf =
+(* let treat_game conf =
   let permut = XpatRandom.shuffle conf.seed in
   Printf.printf "Voici juste la permutation de graine %d:\n" conf.seed;
   List.iter (fun n -> print_int n; print_string " ") permut;
@@ -186,8 +183,11 @@ let treat_game conf =
     permut;
 
   print_newline ();
-<<<<<<< HEAD
+
   init_distribution (init_game conf.game) conf.game permut;
+  *)
+
+  
   (* print_colonnes etat.colonnes; *)
 
 
@@ -204,7 +204,7 @@ let treat_game conf =
    *)
 
 let main () =
-  [("-check", String (fun filename -> config.mode <- Check filename),
+  (* [("-check", String (fun filename -> config.mode <- Check filename),
   "<filename>:\tValidate a solution file");
 ("-search", String (fun filename -> config.mode <- Search filename),
   "<filename>:\tSearch a solution and write it to a solution file")]
@@ -213,4 +213,5 @@ set_game_seed (* pour les arguments seuls, sans option devant *)
 treat_game config
 
 
-let _ = if not !Sys.interactive then main () else ()
+let _ = if not !Sys.interactive then main () else () *)
+0
