@@ -566,7 +566,7 @@ type statut = |UTILE |NON_UTILE |SUCCES |INSOLUBLE |ECHEC
  type coup = card * action 
 
 (*noeud est une structure qui contient un etat, son statut , son score(nombre de carte dans le depot),
-   ses fils (liste des sommets atteignable depuis etat avec un coup valide ) et l'historique des coups qui ont mené vers cet etat  *)
+  et l'historique des coups qui ont mené vers cet etat  *)
 type noeud = { etat:etat ; mutable statut :statut ; score: int ; historique : coup List.t ;profondeur:int }
 
 (*AFFICHAGE*************************************************************************)
