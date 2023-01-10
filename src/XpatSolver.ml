@@ -774,26 +774,25 @@ let rec update_arbre list_fils etats_visites etats_restants=
 
 
 (*creer l'arbre de possibilité et trouver une strategie gagnante *)
-(* let charcher_solution config noeud etat_restant etat_visite max_coup strategie= 
-  match noeud_src.score with 
-  | 52 -> if ( List.length strategie > List.length noeud.historique )then
-               let maj= strategie.list_coup <- noeud.historique in let statut = strategie.statut <- SUCCES in strategie(*strategie gagnante*)
-          else strategie 
+let rec chercher_solution config noeud etat_restant etat_visite max_coup strategie = 
+  match noeud.score with 
+  | 52 -> {list_coup = noeud.historique ; statut: SUCCES} (*strategie gagnante*)
+
   (*si le noeud a atteint profondeur max sans trouver de solution et il n'ya plus de noeud à visiter -> echec*)
-  |_ -> if( List.length noeud.historique =max_coup && States.is_empty etat_restant) then 
-          statut = strategie.statut <- ECHEC in strategie
+  |_ -> if( (noeud.profondeur = max_coup) && (States.is_empty etat_restant)) then 
+          {list_coup = noeud.historique ; statut:   ECHEC} 
         else  
           let list_fils = trouver_fils_atteignables config.game noeud in
-          (*si le noeud n'a aucun coup possible er qu'il ne reste aucun noeud à visiter alors la partie est insoluble *)
+          (*si le noeud n'a aucun coup possible et qu'il ne reste aucun noeud à visiter alors la partie est insoluble *)
           if ( (list_fils=[]) && (States.is_empty etat_restant)) 
-            then (let statut = strategie.statut <- INSOLUBLE in strategie)
+            then {list_coup = noeud.historique ; statut: INSOLUBLE} 
           else      
-            let etat_restant = (State.delete noeud etat_restant) in
-            let etat_visite = (State.add noeud etat_visite) in
-            let update = update_arbre etat_restant etat_visite list_fils in
-            let nouvelle_src = choisir_etat_optimal etat_restant in
-            let chercher_solution config nouvelle_src etat_restant etat_visite max_coup strategie
- *)
+            let (etat_restant,etat_visite) = update_arbre list_fils etat_visite etat_restant in
+            let nouvelle_src = choisir_noeud_optimal etat_restant in
+            let etat_restant = (State.delete nouvelle_src etat_restant) in 
+            let etat_visite = (State.add nouvelle_src etat_visite) in
+            chercher_solution config nouvelle_src etat_restant etat_visite max_coup strategie
+
 
 
 let init_arbre_etat config (etat_src:etat) (max_coup:int) = 
