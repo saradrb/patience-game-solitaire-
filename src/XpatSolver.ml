@@ -28,7 +28,7 @@ let make_etat (depots : depot) (registres : registres option) (colonnes : colonn
 
 (*fonctions set du type etat :*)
 let set_depots (etat : etat) (nv_depots : depot)= 
-  make_etat nv_depots etat.registres etat.colonnes
+  {etat with depots=nv_depots}
 
 let set_registres (etat : etat) (nv_registres : registres option)= 
   make_etat etat.depots nv_registres etat.colonnes
@@ -454,7 +454,7 @@ let rec normalize etat =
 
 let verif_FreeCell (card : Card.card) (card2 : action) etat =
   match card2 with 
-  |V -> (FArray.exists(fun col -> col = []) etat.colonnes) 
+  |V -> (FArray.exists( (=) []) etat.colonnes) 
   |T -> begin match etat.registres with 
          |None -> false 
          |Some(registres) -> PArray.exists (fun card -> card = carte_vide ) registres
@@ -463,8 +463,8 @@ let verif_FreeCell (card : Card.card) (card2 : action) etat =
   |Card(card') -> print_card card ;print_card (Card.of_num card');
           if(fst card = fst (Card.of_num card') - 1) then 
           match snd card with 
-          |Trefle |Pique -> if(snd (Card.of_num card') = Trefle || snd (Card.of_num card') = Pique) then false else true
-          |Coeur |Carreau -> if(snd (Card.of_num card') = Coeur || snd (Card.of_num card') = Carreau) then false else true
+          |Trefle |Pique -> not(snd (Card.of_num card') = Trefle || snd (Card.of_num card') = Pique) 
+          |Coeur |Carreau -> not(snd (Card.of_num card') = Coeur || snd (Card.of_num card') = Carreau) 
       else false 
       
 
@@ -478,10 +478,10 @@ let verif_Seahaven (card : Card.card) (card2 : action) etat =
   |V -> (FArray.exists(fun col -> col = []) etat.colonnes)  && (fst(card)=13)
   |Card(card') -> if(fst card = fst (Card.of_num card') - 1) then 
         match snd card with 
-        |Trefle -> if(snd (Card.of_num card') = Trefle) then true else false
-        |Pique -> if(snd (Card.of_num card') = Pique) then true else false
-        |Coeur -> if(snd (Card.of_num card') = Coeur) then true else false
-        |Carreau -> if(snd (Card.of_num card') = Carreau) then true else false
+        |Trefle -> (snd (Card.of_num card') = Trefle)
+        |Pique -> (snd (Card.of_num card') = Pique) 
+        |Coeur -> (snd (Card.of_num card') = Coeur) 
+        |Carreau -> (snd (Card.of_num card') = Carreau) 
     else false 
 
 
@@ -490,10 +490,10 @@ let verif_Midnight (card : Card.card) (card2 : action) etat =
   |T | V -> false 
   |Card(card') -> print_card (Card.of_num card'); if(fst card = fst (Card.of_num card') - 1)then 
         match snd card with 
-        |Trefle -> if(snd (Card.of_num card') = Trefle) then true else false
-        |Pique -> if(snd (Card.of_num card') = Pique) then true else false
-        |Coeur -> if(snd (Card.of_num card') = Coeur) then true else false
-        |Carreau -> if(snd (Card.of_num card') = Carreau) then true else false
+        |Trefle -> (snd (Card.of_num card') = Trefle)
+        |Pique -> (snd (Card.of_num card') = Pique) 
+        |Coeur -> (snd (Card.of_num card') = Coeur) 
+        |Carreau -> (snd (Card.of_num card') = Carreau) 
     else false 
 
 let verif_Baker (card : Card.card) (card2 : action) etat=
@@ -526,7 +526,7 @@ let validate_coup game (card: Card.card) (card2:action) (etat:etat) =
 
 (* Retourne vrai si les depots sont tous completement remplis *)
 let depot_full depots =
-  PArray.for_all (fun n_card -> n_card=13) depots
+  PArray.for_all ((=) 13) depots
 
 
 let treat_line line etat n_coup game=  
@@ -537,6 +537,142 @@ let treat_line line etat n_coup game=
   let c2 = string_to_action (List.nth list_coups 1) in 
   if ( validate_coup game (Card.of_num c1) c2 etat) then let new_etat= coup c1 c2 etat n_coup  in normalize new_etat
   else (Printf.printf "ECHEC %d\n" (n_coup+1); exit 1)
+
+
+(************************************************************************************************************
+    *************************************************************************************************************************
+    ****************************************************************************************************************************
+    ***********************************************************************************************************************************
+    ************************************************************************************************************************
+    **************************************************************************************************************************
+    ************************************************************************************************************************)
+(*********************** JALON 2 *********************************************(* ****************************************************)
+ *)(* type etat = {depots: depot;  registres: registres option  ;colonnes: colonnes} *)
+
+(*trier les cartes des registres*)
+let sort_reg reg_array =
+  match reg_array with 
+  |Some (reg) -> Some(PArray.sort (fun c1 c2-> compare (Card.to_num c1) (Card.to_num c2)  ) reg)
+  |None -> None
+
+(*comparer les collones de deux etats *)
+(* let rec compare_cols cols1 cols2 mybool= 
+  match mybool with 
+  |false -> begin
+    match (cols1,cols2) with 
+    | (col :: cols1, col' :: cols2) -> compare_cols cols1 cols2 (col = col') 
+    |([],[]) -> true 
+  end
+  |true -> true  *)
+
+ 
+
+(*comapre entre deux etats*)
+(*state -> state -> int*)
+let compare_state noeud1 noeud2= 
+  let etat1 = noeud1.etat in 
+  let etat2 = noeud2.etat in 
+    match (compare (sort_reg etat1.registres) (sort_reg etat2.registres) ) with 
+    | 0 -> compare etat1.colonnes etat2.colonnes
+    | _ -> 1
+
+
+    
+let count_depot etat 
+ let sum_array depot taille =
+  match depot with
+  | [||] -> 0 (*depot est vide*)
+  | _ -> arr.(0) + sum_array (PArray.sub depot 1 (PArray.length depot - 1))
+ in sum_array etat.depot
+    
+
+(********************************************************************************************************
+    ***************************************************************************************************************
+    ****************************** STRUCTURES *********************************************************************)
+
+type statut = |UTILE |NON_UTILE |SUCCES |INSOLUBLE |ECHEC
+type coup = | Card of int * T | Card of int * V | Card of int * Card of int 
+
+(*noeud est une structure qui contient un etat, son statut , son score(nombre de carte dans le depot),
+   ses fils (liste des sommets atteignable depuis etat avec un coup valide ) et l'historique des coups qui ont mené vers cet etat  *)
+type noeud = { etat:etat ; mutable statut :statut ; mutable score: int ; mutable fils: noeud List.t ,  historique : coup list  }
+
+(* states est un arbre de noeuds etat *)
+module States = Set.Make (struct type t = noeud let compare = compare_state end)
+
+type list_coup =  coup List.t
+let  strategie = {mutable list_coup = list_coup; mutable statut = statut}
+
+let etat_restants =  States.singleton noeud_src 
+let etat_visite States.empty 
+
+let coup_v = |ROI |RIEN |TOUT
+let coup_t = |RIEN |TOUT 
+
+
+let regle {coup_V = coup_v ; coup_T = coup_t; coup_meme_couleur = bool }
+(***************************************************************************************************************)
+
+(*ajouter un etat dans l'arbre des etats_restants en verifiant si il n'exite pas deja dans l'ensemble à 
+   visiter et l'ensembles des noeuds deja visités *)
+
+let ajouter_noeud  noeud = 
+    if  ((States.mem noeud etats_restants) = false && (States.mem noeud etats_visite)) then 
+      States.add noeud etat_restants  
+    else etats_restants
+
+
+  
+    
+
+  
+  
+  (*trouver tout les etats atteignable depuis etat_src avec
+      un coup valide et les jouter a etat_restant*)
+
+let trouver_fils_atteignables game etat_src = 
+    let list_coups = coups_possibles game etat_src in
+    let list_fils = appliquer etat_src list_coups in (*list des fils resultant pour chaque coup*)
+    list_fils 
+  
+  
+(*creer l'arbre de possibilité et trouver une strategie gagnante *)
+let charcher_solution config noeud etat_restant etat_visite max_coup strategie= 
+  match noeud_src.score with 
+  | 52 -> if ( List.length strategie > List.length noeud.historique )then
+               let maj= strategie.list_coup <- noeud.historique in let statut = strategie.statut <- SUCCES in strategie(*strategie gagnante*)
+          else strategie 
+  (*si le noeud a atteint profondeur max sans trouver de solution et il n'ya plus de noeud à visiter -> echec*)
+  |_ -> if( List.length noeud.historique =max_coup && States.is_empty etat_restant) then 
+          statut = strategie.statut <- ECHEC in strategie
+        else  
+          let list_fils = trouver_fils_atteignables config.game noeud in
+          (*si le noeud n'a aucun coup possible er qu'il ne reste aucun noeud à visiter alors la partie est insoluble *)
+          if ( (list_fils=[]) && (States.is_empty etat_restant)) 
+            then (let statut = strategie.statut <- INSOLUBLE in strategie)
+          else      
+            let etat_restant = (State.delete noeud etat_restant) in
+            let etat_visite = (State.add noeud etat_visite) in
+            let update = update_arbre etat_restant etat_visite list_fils in
+            let nouvelle_src = choisir_etat_optimal etat_restant in
+            let chercher_solution config nouvelle_src etat_restant etat_visite max_coup strategie
+
+            
+let init_arbre_etat etat_src max_coup = 
+  let noeud_src = {etat = normalize etat ; 
+  statut = UTILE ; 
+  score = count_depot etat;
+  fils = [];
+  historique = [];
+  }  in
+  chercher_solution noeud_src etat_restant etat_visite max_coup 
+
+
+
+
+
+
+
 
 
 
