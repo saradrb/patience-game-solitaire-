@@ -848,8 +848,8 @@ let rec parcours config noeud etat_restant etat_visite max_coup  =
             parcours config nouvelle_src etat_restant etat_visite max_coup 
 
 
-(* initialise l'arbre et lance le parcours dfs*)
-let chercher_solution_dfs config (etat_src:etat) (max_coup:int) = 
+(* initialise l'arbre et lance le parcours bfs*)
+let chercher_solution_bfs config (etat_src:etat) (max_coup:int) = 
   let noeud_src = {etat = normalize etat_src ; 
   statut = UTILE ; 
   score = count_depot etat_src;
@@ -885,7 +885,7 @@ let statut_to_string statut =
   |INSOLUBLE ->"INSOLUBLE"
   |ECHEC ->"ECHEC"
 
-(* lire un fichier solution ligne par ligne *)
+
 let read_solution_file conf etat  = match conf.mode with
 |Search(sol)-> let strat = chercher_solution conf etat 20 in Printf.printf "%s" (statut_to_string strat.statut)
 |Check(sol) -> 
