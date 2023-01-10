@@ -622,7 +622,7 @@ type couleur = |ALTERNE |SAME |TOUT
 type regle = {coup_V : coup_v ; coup_T : coup_t; coup_meme_couleur : couleur }
 
 
-(***************************************************************************************************************)
+(**************************** GENRER LES COUPS POSSIBLES ET LES ETATS FILS ***********************************************************************************)
 
 
 (*retourne la liste de toutes les cartes au sommet des colonnes *)
@@ -758,7 +758,12 @@ let trouver_fils_atteignables game noeud_src =
     let list_coups = generer_coups_possibles game noeud_src.etat  in
     generer_fils noeud_src list_coups (*liste des fils resultant pour chaque coup*)
 
+
     
+(**************************** MISE A JOUR DE L'ARBRE AJOUT DES ETATS DANS L'ARBRE**********************************************)
+
+
+
 (* ajouter un etat dans l'arbre des etats_restants en verifiant si il n'exite pas deja dans l'ensemble à 
    visiter et l'ensembles des noeuds deja visités ,  retourner le nouvel ensemble d'etats restants*) 
 let ajouter_noeud  noeud etats_restants etats_visite  = 
@@ -773,11 +778,28 @@ let rec update_arbre list_fils etats_visites etats_restants=
 
 
 
+(******************************************* OPTIMISATION DES CHOIX DE NOEUDS A VISITER  ***********************************************************************)
+let tri_ensemble_noeuds etats_restants = 
+
+
+let choisir_noeud_optimal etat_restant =
+    let noeud= plus_grand_score etat_restant 
+
+
+
+
+
+
+
+
+
+
+
+(******************************************* RECHERCHE SOLUTION ********************************************************************************)
 (*creer l'arbre de possibilité et trouver une strategie gagnante *)
-let rec chercher_solution config noeud etat_restant etat_visite max_coup strategie = 
+let rec parcours config noeud etat_restant etat_visite max_coup  = 
   match noeud.score with 
   | 52 -> {list_coup = noeud.historique ; statut: SUCCES} (*strategie gagnante*)
-
   (*si le noeud a atteint profondeur max sans trouver de solution et il n'ya plus de noeud à visiter -> echec*)
   |_ -> if( (noeud.profondeur = max_coup) && (States.is_empty etat_restant)) then 
           {list_coup = noeud.historique ; statut:   ECHEC} 
@@ -791,20 +813,21 @@ let rec chercher_solution config noeud etat_restant etat_visite max_coup strateg
             let nouvelle_src = choisir_noeud_optimal etat_restant in
             let etat_restant = (State.delete nouvelle_src etat_restant) in 
             let etat_visite = (State.add nouvelle_src etat_visite) in
-            chercher_solution config nouvelle_src etat_restant etat_visite max_coup strategie
+            parcours config nouvelle_src etat_restant etat_visite max_coup 
 
 
 
-let init_arbre_etat config (etat_src:etat) (max_coup:int) = 
+let chercher_solution config (etat_src:etat) (max_coup:int) = 
   let noeud_src = {etat = normalize etat_src ; 
   statut = UTILE ; 
   score = count_depot etat_src;
   historique = [];
   profondeur=0;
   }  in display_state noeud_src.etat ;
-  let etat_restants =  States.singleton noeud_src in 
+  let etat_restant =  States.singleton noeud_src in 
   let etat_visite = States.empty  in 
-  let list_fils = trouver_fils_atteignables config.game noeud_src in display_list_noeuds list_fils
+  let strategie= parcours config noeud_src etat_restant etat_visite max_coup 
+  in stratgie 
 
   (* let list_coup = generer_coups_possibles config.game etat_src
   in Printf.printf"\n COOUP POSSIBLES \n"; print_list_coup_num list_coup;  *)
@@ -848,7 +871,7 @@ let treat_game conf =
   print_newline ();
   let etat = init_game conf.game permut in 
   (* read_solution_file conf etat *)
-  init_arbre_etat conf etat 10 ;exit 0
+  chercher_solution conf etat 10 ;exit 0
 
 
  
