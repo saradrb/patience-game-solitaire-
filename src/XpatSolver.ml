@@ -567,15 +567,29 @@ type statut = |UTILE |NON_UTILE |SUCCES |INSOLUBLE |ECHEC
 
 (*noeud est une structure qui contient un etat, son statut , son score(nombre de carte dans le depot),
    ses fils (liste des sommets atteignable depuis etat avec un coup valide ) et l'historique des coups qui ont mené vers cet etat  *)
-type noeud = { etat:etat ; mutable statut :statut ; mutable score: int ; mutable fils: noeud List.t ;  historique : coup List.t  }
+type noeud = { etat:etat ; mutable statut :statut ; score: int ; historique : coup List.t ;profondeur:int }
+
+(*AFFICHAGE*************************************************************************)
+
+let print_list_card l = Printf.printf "CARD LIST : " ;List.iter (fun card -> Printf.printf "%s " (Card.to_string card)) l
+let print_list_coup l = List.iter (fun (card,action)-> Printf.printf "%s %s\n" (Card.to_string card) (action_string(action))) l
+let print_list_coup_num l = List.iter (fun (card,action)-> Printf.printf "%d %s\n" (Card.to_num card) (action_string(action))) l
+
+let display_noeud node = 
+    display_state node.etat ; 
+    Printf.printf "\n HISTORIQUE \n"; print_list_coup node.historique;
+    Printf.printf "\n SCORE %d\n" node.score
+  
+let display_list_noeuds list_node = 
+    List.iter (fun node -> display_noeud node) list_node
+(**********************************************************************************************************)
+
 
 (*trier les cartes des registres*)
 let sort_reg reg_array =
   match reg_array with 
   |Some (reg) -> Some(PArray.sort (fun c1 c2-> compare (Card.to_num c1) (Card.to_num c2)  ) reg)
   |None -> None
-
-
 
 (*comapre entre deux etats*)
 (*state -> state -> int*)
@@ -601,27 +615,14 @@ module States = Set.Make (struct type t = noeud let compare = compare_state end)
 type list_coup =  coup List.t
 type  strategie = { mutable list_coup: list_coup; mutable statut: statut}
 
-(* let etat_restants =  States.singleton noeud_src 
-let etat_visite = States.empty  *)
-
 type coup_v = |ROI |RIEN |TOUT
 type coup_t = |RIEN |TOUT 
 type couleur = |ALTERNE |SAME |TOUT
 
 type regle = {coup_V : coup_v ; coup_T : coup_t; coup_meme_couleur : couleur }
 
-let print_list_card l = Printf.printf "CARD LIST : " ;List.iter (fun card -> Printf.printf "%s " (Card.to_string card)) l
-let print_list_coup l = List.iter (fun (card,action)-> Printf.printf "%s %s\n" (Card.to_string card) (action_string(action))) l
-let print_list_coup_num l = List.iter (fun (card,action)-> Printf.printf "%d %s\n" (Card.to_num card) (action_string(action))) l
+
 (***************************************************************************************************************)
-
-(*ajouter un etat dans l'arbre des etats_restants en verifiant si il n'exite pas deja dans l'ensemble à 
-   visiter et l'ensembles des noeuds deja visités *)
-
-(* let ajouter_noeud  noeud = 
-    if  ((States.mem noeud etats_restants) = false && (States.mem noeud etats_visite)) then 
-      States.add noeud etat_restants  
-    else etats_restants *)
 
 
 (*retourne la liste de toutes les cartes au sommet des colonnes *)
@@ -718,12 +719,11 @@ let coup_t  etat_registres sommets_cols contenu_reg regle =
               |card1::rest  -> generer_coup_t rest ((card1,T)::list_coup) 
             else []
           in generer_coup_t  sommets_cols [] 
-          end 
-  
+          end
+      
 
 (* Trouver tout les coups possibles valide à partir d'un etat*)
-(*prend le nom du jeux et l'etat source 
-   genere les regles du jeux et genere les coups possible selon les regles de chaque jeux*)
+(*prend le nom du jeux et l'etat source -> genere les regles du jeux et genere les coups possible selon les regles de chaque jeux*)
 let generer_coups_possibles game (etat_src : etat)  =
   let sommets_cols = list_sommets_col etat_src 0 [] in 
   (* print_list_card sommets_cols; *)
@@ -740,16 +740,39 @@ let generer_coups_possibles game (etat_src : etat)  =
   let list_card_t = coup_t etat_src.registres sommets_cols contenu_reg regle in 
   list_card_card @ list_card_v @ list_card_t
 
-  
-  (*trouver tout les etats atteignable depuis etat_src avec
-      un coup valide et les jouter a etat_restant*)
 
-(* let trouver_fils_atteignables game etat_src = 
-    let list_coups = generer_coups_possibles game etat_src  in
-    let list_fils = appliquer_coup etat_src list_coups in (*list des fils resultant pour chaque coup*)
-    list_fils 
-   *)
-  
+
+(* generer une liste de node fils du noeud_src en applicant sur lui à chaque fois un des coups possibles*)
+let rec generer_fils (noeud_src:noeud) (list_coups:coup List.t) = 
+  match list_coups with 
+  |[]-> []
+  |(carte,action):: l -> begin let etat_fils = normalize (coup (Card.to_num carte) action noeud_src.etat 1) in 
+                        let noeud_fils = {etat=etat_fils; statut=UTILE; score= count_depot etat_fils; historique = ((carte,action)::noeud_src.historique); profondeur= noeud_src.profondeur+1}
+                        in noeud_fils :: generer_fils noeud_src l 
+                      end 
+                      
+
+(*trouver tout les etats atteignable depuis etat_src avec
+      un coup valide et les jouter a etat_restant*)
+let trouver_fils_atteignables game noeud_src = 
+    let list_coups = generer_coups_possibles game noeud_src.etat  in
+    generer_fils noeud_src list_coups (*liste des fils resultant pour chaque coup*)
+
+    
+(* ajouter un etat dans l'arbre des etats_restants en verifiant si il n'exite pas deja dans l'ensemble à 
+   visiter et l'ensembles des noeuds deja visités ,  retourner le nouvel ensemble d'etats restants*) 
+let ajouter_noeud  noeud etats_restants etats_visite  = 
+   if  ((States.mem noeud etats_restants) = false && (States.mem noeud etats_visite)) then States.add noeud etats_restants  
+   else etats_restants 
+
+   (*ajoute les etats contenue dans la liste list_fils dans l'arbre*)
+let rec update_arbre list_fils etats_visites etats_restants=
+   match list_fils with 
+   | [] -> (etats_restants,etats_visites) (* retourne le tuple mis à jour*)
+   | fils :: list -> update_arbre list etats_visites (ajouter_noeud fils etats_restants etats_visites)
+
+
+
 (*creer l'arbre de possibilité et trouver une strategie gagnante *)
 (* let charcher_solution config noeud etat_restant etat_visite max_coup strategie= 
   match noeud_src.score with 
@@ -771,16 +794,22 @@ let generer_coups_possibles game (etat_src : etat)  =
             let nouvelle_src = choisir_etat_optimal etat_restant in
             let chercher_solution config nouvelle_src etat_restant etat_visite max_coup strategie
  *)
-            
-let init_arbre_etat config etat_src max_coup = 
+
+
+let init_arbre_etat config (etat_src:etat) (max_coup:int) = 
   let noeud_src = {etat = normalize etat_src ; 
   statut = UTILE ; 
   score = count_depot etat_src;
-  fils = [];
   historique = [];
+  profondeur=0;
   }  in display_state noeud_src.etat ;
-  let list_coup = generer_coups_possibles config.game etat_src
-  in Printf.printf"\n COOUP POSSIBLES \n"; print_list_coup_num list_coup
+  let etat_restants =  States.singleton noeud_src in 
+  let etat_visite = States.empty  in 
+  let list_fils = trouver_fils_atteignables config.game noeud_src in display_list_noeuds list_fils
+
+  (* let list_coup = generer_coups_possibles config.game etat_src
+  in Printf.printf"\n COOUP POSSIBLES \n"; print_list_coup_num list_coup;  *)
+  
 
 
 
@@ -791,7 +820,7 @@ let init_arbre_etat config etat_src max_coup =
 
 (* lire un fichier solution ligne par ligne *)
 let read_solution_file conf etat  = match conf.mode with
-|Search(sol)-> init_arbre_etat conf etat 10 ;exit 0
+|Search(sol)-> Printf.printf "sara";exit 0
 |Check(sol) -> 
   (*ovrir le fichier solution*)
   let myfile= open_in sol in
