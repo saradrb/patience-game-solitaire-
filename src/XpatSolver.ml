@@ -1,5 +1,5 @@
 open XpatLib
-
+open Set
 
 let carte_vide = (-1,Card.Trefle)
 
@@ -613,7 +613,7 @@ let count_depot etat =
 module States = Set.Make (struct type t = noeud let compare = compare_state end)
 
 type list_coup =  coup List.t
-type  strategie = { mutable list_coup: list_coup; mutable statut: statut}
+type  strategie = {  list_coup: list_coup;  statut: statut}
 
 type coup_v = |ROI |RIEN |TOUT
 type coup_t = |RIEN |TOUT 
@@ -779,70 +779,115 @@ let rec update_arbre list_fils etats_visites etats_restants=
 
 
 (******************************************* OPTIMISATION DES CHOIX DE NOEUDS A VISITER  ***********************************************************************)
-let tri_ensemble_noeuds etats_restants = 
 
 
-let choisir_noeud_optimal etat_restant =
-    let noeud= plus_grand_score etat_restant 
+(* Fonction récursive pour effectuer le parcours en largeur *)
+let rec parcours_bfs config (noeud: noeud) ( etats_restants : noeud Queue.t) (etats_visites : States.t) (max_coup: int): strategie =
+    match  noeud.score with 
+    | 52-> {list_coup = noeud.historique ; statut = SUCCES}     (* Solution trouvée *)
+    | _ ->if( (noeud.profondeur = max_coup) &&  Queue.is_empty etats_restants) then {list_coup = [] ; statut = ECHEC} (* Pas de solution trouvée *)
+          else 
+          ( (* Génération des états fils suivants *)
+            let list_fils  = trouver_fils_atteignables config.game noeud in 
+            (*si le noeud n'a aucun coup possible et qu'il ne reste aucun noeud à visiter alors la partie est insoluble *)
+            match list_fils with 
+            | [] -> begin if (Queue.is_empty etats_restants) then {list_coup = noeud.historique ; statut = INSOLUBLE} 
+                    else let noeud_suivant =  Queue.pop etats_restants  in parcours_bfs config noeud_suivant etats_restants etats_visites max_coup
+                  end 
+            | _ -> 
+              let list_fils = List.filter (fun fils -> not (States.mem fils etats_visites)) list_fils in
+              let list_fils = List.sort (fun n1 n2 -> n1.score - n2.score) list_fils in 
+              let etats_visites = List.fold_left (fun set elem -> States.add elem set) etats_visites list_fils in
+              List.iter (fun fils ->Queue.push fils etats_restants) list_fils; 
+              let noeud_suivant =  Queue.pop etats_restants in 
+              parcours_bfs config noeud_suivant etats_restants etats_visites max_coup
+          )
 
 
-
-
-
-
-
+        
 
 
 
 
 (******************************************* RECHERCHE SOLUTION ********************************************************************************)
-(*creer l'arbre de possibilité et trouver une strategie gagnante *)
+
+(* Version 1 : cette version choisit à chaque fois le noeud avec le plus grand score à chaque fois sinon elle prend 
+   celui avec le noeud le plus petit donc avec le moins de carte dans les colonnes et registres confondus,
+   nous avons aussi implementé le parcours BFS*)
+(*chercher_solution utiliste le parcours bfs  implementé plus haut, il semble y avoir un beug pour l'instant qui reste a résoudre*)
+
+let max_score_noeud ( etats_restants :States.t) : noeud option =
+  let seq = States.to_seq etats_restants in
+  Seq.fold_left (fun max_node state ->
+      match max_node with
+      | None -> Some state
+      | Some max_node when state.score > max_node.score -> Some state
+      | _ -> max_node
+  ) None seq
+
+(*creer l'arbre de possibilité et trouver une strategie gagnante  *)
 let rec parcours config noeud etat_restant etat_visite max_coup  = 
   match noeud.score with 
-  | 52 -> {list_coup = noeud.historique ; statut: SUCCES} (*strategie gagnante*)
+  | 52 -> {list_coup = noeud.historique ; statut= SUCCES} (*strategie gagnante*)
   (*si le noeud a atteint profondeur max sans trouver de solution et il n'ya plus de noeud à visiter -> echec*)
   |_ -> if( (noeud.profondeur = max_coup) && (States.is_empty etat_restant)) then 
-          {list_coup = noeud.historique ; statut:   ECHEC} 
+          {list_coup = noeud.historique ; statut =ECHEC} 
         else  
           let list_fils = trouver_fils_atteignables config.game noeud in
           (*si le noeud n'a aucun coup possible et qu'il ne reste aucun noeud à visiter alors la partie est insoluble *)
           if ( (list_fils=[]) && (States.is_empty etat_restant)) 
-            then {list_coup = noeud.historique ; statut: INSOLUBLE} 
+            then {list_coup = noeud.historique ; statut = INSOLUBLE} 
           else      
             let (etat_restant,etat_visite) = update_arbre list_fils etat_visite etat_restant in
-            let nouvelle_src = choisir_noeud_optimal etat_restant in
-            let etat_restant = (State.delete nouvelle_src etat_restant) in 
-            let etat_visite = (State.add nouvelle_src etat_visite) in
+            let nouvelle_src = match (max_score_noeud etat_restant)with 
+                              |None -> States.min_elt  etat_restant 
+                              |Some(noeud) -> noeud
+                            in
+            let etat_restant = (States.remove nouvelle_src etat_restant) in 
+            let etat_visite = (States.add nouvelle_src etat_visite) in
             parcours config nouvelle_src etat_restant etat_visite max_coup 
 
 
-
-let chercher_solution config (etat_src:etat) (max_coup:int) = 
+(* initialise l'arbre et lance le parcours dfs*)
+let chercher_solution_dfs config (etat_src:etat) (max_coup:int) = 
   let noeud_src = {etat = normalize etat_src ; 
   statut = UTILE ; 
   score = count_depot etat_src;
   historique = [];
   profondeur=0;
   }  in display_state noeud_src.etat ;
-  let etat_restant =  States.singleton noeud_src in 
+  let etat_restant = Queue.create () in 
   let etat_visite = States.empty  in 
-  let strategie= parcours config noeud_src etat_restant etat_visite max_coup 
-  in stratgie 
+  let strategie = parcours_bfs config noeud_src etat_restant etat_visite max_coup 
+  in strategie 
+
+
+let chercher_solution config (etat_src:etat) (max_coup:int) = 
+    let noeud_src = {etat = normalize etat_src ; 
+    statut = UTILE ; 
+    score = count_depot etat_src;
+    historique = [];
+    profondeur=0;
+    }  in display_state noeud_src.etat ;
+    let etat_restant = States.singleton noeud_src in 
+    let etat_visite = States.empty  in 
+    let strategie =  parcours config noeud_src etat_restant etat_visite max_coup
+    in strategie 
 
   (* let list_coup = generer_coups_possibles config.game etat_src
   in Printf.printf"\n COOUP POSSIBLES \n"; print_list_coup_num list_coup;  *)
   
-
-
-
-
-
-
-
+let statut_to_string statut =
+  match statut with 
+  |UTILE -> "UTILE"
+  |NON_UTILE -> "NON_UTILE"
+  |SUCCES -> "SUCCES"
+  |INSOLUBLE ->"INSOLUBLE"
+  |ECHEC ->"ECHEC"
 
 (* lire un fichier solution ligne par ligne *)
 let read_solution_file conf etat  = match conf.mode with
-|Search(sol)-> Printf.printf "sara";exit 0
+|Search(sol)-> let strat = chercher_solution conf etat 20 in Printf.printf "%s" (statut_to_string strat.statut)
 |Check(sol) -> 
   (*ovrir le fichier solution*)
   let myfile= open_in sol in
@@ -859,8 +904,6 @@ let read_solution_file conf etat  = match conf.mode with
     in readline 0 etat conf
              
   
-  
-
 
 
 let treat_game conf =
@@ -870,8 +913,8 @@ let treat_game conf =
   List.iter (fun n -> Printf.printf "%s "( Card.to_string (Card.of_num n)))permut;
   print_newline ();
   let etat = init_game conf.game permut in 
-  (* read_solution_file conf etat *)
-  chercher_solution conf etat 10 ;exit 0
+  read_solution_file conf etat; 
+  exit 0
 
 
  
