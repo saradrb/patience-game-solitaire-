@@ -488,7 +488,7 @@ let verif_Seahaven (card : Card.card) (card2 : action) etat =
 let verif_Midnight (card : Card.card) (card2 : action) etat =
   match card2 with 
   |T | V -> false 
-  |Card(card') -> print_card (Card.of_num card'); if(fst card = fst (Card.of_num card') - 1)then 
+  |Card(card') -> if(fst card = fst (Card.of_num card') - 1)then 
         match snd card with 
         |Trefle -> (snd (Card.of_num card') = Trefle)
         |Pique -> (snd (Card.of_num card') = Pique) 
@@ -910,8 +910,8 @@ let treat_game conf =
 
   let permut = XpatRandom.shuffle conf.seed in
   Printf.printf "Voici juste la permutation de graine %d:\n" conf.seed;
-  List.iter (fun n -> Printf.printf "%s "( Card.to_string (Card.of_num n)))permut;
-  print_newline ();
+  (* List.iter (fun n -> Printf.printf "%s "( Card.to_string (Card.of_num n)))permut;
+  print_newline (); *)
   let etat = init_game conf.game permut in 
   read_solution_file conf etat; 
   exit 0
