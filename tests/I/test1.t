@@ -1,5 +1,5 @@
 Ce fichier de test est au format CRAM.
-Voir https://dune.readthedocs.io/en/stable/tests.html#cram-tests
+Voir https://dune.readtheddune runtest --file=test.tocs.io/en/stable/tests.html#cram-tests
 
 Fichier solution vide:
 

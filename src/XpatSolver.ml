@@ -209,7 +209,7 @@ let print_col_nums list_card =
   List.iter (fun card -> Printf.printf "%d " (Card.to_num card)) list_card
 
 let print_colonnes colonnes_tab = 
-  FArray.iter (fun col ->Printf.printf "COL : "; List.iter (fun card -> Printf.printf "%s " (Card.to_string card)) col;Printf.printf "\n" ) colonnes_tab
+  FArray.iter (fun col ->Printf.printf "COL : "; List.iter (fun card -> Printf.printf "[%s] " (Card.to_string card)) col;Printf.printf "\n" ) colonnes_tab
 
 (* affichage des registres  *)
 let print_reg registres_tab =
@@ -476,25 +476,15 @@ let verif_Seahaven (card : Card.card) (card2 : action) etat =
         |Some(registres)-> PArray.exists (fun card -> card = carte_vide ) registres
         end 
   |V -> (FArray.exists(fun col -> col = []) etat.colonnes)  && (fst(card)=13)
-  |Card(card') -> if(fst card = fst (Card.of_num card') - 1) then 
-        match snd card with 
-        |Trefle -> (snd (Card.of_num card') = Trefle)
-        |Pique -> (snd (Card.of_num card') = Pique) 
-        |Coeur -> (snd (Card.of_num card') = Coeur) 
-        |Carreau -> (snd (Card.of_num card') = Carreau) 
-    else false 
+  |Card(card') -> if(fst card = fst (Card.of_num card') - 1) then (snd card) = (snd (Card.of_num card'))
+                  else false 
 
 
 let verif_Midnight (card : Card.card) (card2 : action) etat =
   match card2 with 
   |T | V -> false 
-  |Card(card') -> if(fst card = fst (Card.of_num card') - 1)then 
-        match snd card with 
-        |Trefle -> (snd (Card.of_num card') = Trefle)
-        |Pique -> (snd (Card.of_num card') = Pique) 
-        |Coeur -> (snd (Card.of_num card') = Coeur) 
-        |Carreau -> (snd (Card.of_num card') = Carreau) 
-    else false 
+  |Card(card') -> if(fst card = fst (Card.of_num card') - 1)then (snd card) = (snd (Card.of_num card'))
+                  else false 
 
 let verif_Baker (card : Card.card) (card2 : action) etat=
 match card2 with 
@@ -577,8 +567,11 @@ let print_list_coup_num l = List.iter (fun (card,action)-> Printf.printf "%d %s\
 
 let display_noeud node = 
     display_state node.etat ; 
-    Printf.printf "\n HISTORIQUE \n"; print_list_coup node.historique;
+    Printf.printf "\n HISTORIQUE \n"; print_list_coup_num node.historique;
     Printf.printf "\n SCORE %d\n" node.score
+
+let print_list_noeud  list_node =
+  List.iter (fun noeud -> display_noeud noeud ) list_node
   
 let display_list_noeuds list_node = 
     List.iter (fun node -> display_noeud node) list_node
@@ -766,15 +759,16 @@ let trouver_fils_atteignables game noeud_src =
 
 (* ajouter un etat dans l'arbre des etats_restants en verifiant si il n'exite pas deja dans l'ensemble à 
    visiter et l'ensembles des noeuds deja visités ,  retourner le nouvel ensemble d'etats restants*) 
-let ajouter_noeud  noeud etats_restants etats_visite  = 
-   if  ((States.mem noeud etats_restants) = false && (States.mem noeud etats_visite)) then States.add noeud etats_restants  
+let ajouter_noeud  noeud etats_restants etats_visite = 
+   if  ((States.mem noeud etats_restants) = false && (States.mem noeud etats_visite)= false) then States.add noeud etats_restants  
    else etats_restants 
 
    (*ajoute les etats contenue dans la liste list_fils dans l'arbre*)
 let rec update_arbre list_fils etats_visites etats_restants=
    match list_fils with 
-   | [] -> (etats_restants,etats_visites) (* retourne le tuple mis à jour*)
+   | [] ->  etats_restants(* retourne le tuple mis à jour*)
    | fils :: list -> update_arbre list etats_visites (ajouter_noeud fils etats_restants etats_visites)
+
 
 
 
@@ -815,36 +809,60 @@ let rec parcours_bfs config (noeud: noeud) ( etats_restants : noeud Queue.t) (et
    celui avec le noeud le plus petit donc avec le moins de carte dans les colonnes et registres confondus,
    nous avons aussi implementé le parcours BFS*)
 (*chercher_solution utiliste le parcours bfs  implementé plus haut, il semble y avoir un beug pour l'instant qui reste a résoudre*)
+let print_arbre arbre = 
+ let arbre_b = States.to_seq arbre in 
+ Seq.iter (fun node -> display_noeud node) arbre_b
 
-let max_score_noeud ( etats_restants :States.t) : noeud option =
-  let seq = States.to_seq etats_restants in
-  Seq.fold_left (fun max_node state ->
-      match max_node with
-      | None -> Some state
-      | Some max_node when state.score > max_node.score -> Some state
-      | _ -> max_node
-  ) None seq
+let add_two_best_scores list_fils etats_visites etats_restants =
+  if list_fils =[] then etats_restants
+  else 
+    let b1 = List.fold_right ( fun noeud max_n -> if (noeud.score > max_n.score) then noeud else max_n ) list_fils (List.hd list_fils) in 
+    let list_fils_r = List.filter ( (<>) b1) list_fils in 
+    let etats_restants = ajouter_noeud b1 etats_restants etats_visites in 
+    if list_fils_r =[] then etats_restants 
+    else 
+      let b2 = List.fold_right ( fun noeud max_n ->  if (noeud.score > max_n.score) then noeud else max_n ) list_fils_r (List.hd list_fils_r) in
+      ajouter_noeud b2 etats_restants etats_visites
 
+let bfs ( etats_restants :States.t) = 
+    let sorted_list = List.sort (fun a b -> compare a.profondeur b.profondeur) (States.elements etats_restants)in
+    let sorted_set = States.of_list sorted_list in 
+    States.choose sorted_set
+    
+let max_score_noeud ( etats_restants :States.t) : noeud  =
+  let first_element= bfs etats_restants in 
+  let max_score_noeud = States.fold (fun noeud max_noeud -> if (( max_noeud.profondeur = noeud.profondeur) || ( max_noeud.score > noeud.score))  then max_noeud  else noeud ) etats_restants first_element 
+  in Printf.printf" max score %d " max_score_noeud.score; max_score_noeud
+
+
+  
 (*creer l'arbre de possibilité et trouver une strategie gagnante  *)
 let rec parcours config noeud etat_restant etat_visite max_coup  = 
+  let etat_restant = (States.remove noeud etat_restant) in 
+  let etat_visite = (States.add noeud etat_visite) in  
   match noeud.score with 
   | 52 -> {list_coup = noeud.historique ; statut= SUCCES} (*strategie gagnante*)
   (*si le noeud a atteint profondeur max sans trouver de solution et il n'ya plus de noeud à visiter -> echec*)
-  |_ -> if( (noeud.profondeur = max_coup) && (States.is_empty etat_restant)) then 
-          {list_coup = noeud.historique ; statut =ECHEC} 
-        else  
-          let list_fils = trouver_fils_atteignables config.game noeud in
+  |_ -> match noeud.profondeur with  
+        | e when e =max_coup -> if (States.is_empty etat_restant) then {list_coup = noeud.historique ; statut =ECHEC} 
+                      else let nouvelle_src = max_score_noeud etat_restant in
+                            let nouvelle_src = max_score_noeud etat_restant in
+                            Printf.printf "\n\n\n Nouvelle source est \n" ;
+                            display_noeud nouvelle_src ;
+                            parcours config nouvelle_src etat_restant etat_visite max_coup 
+
+        | _ -> let list_fils = trouver_fils_atteignables config.game noeud in
           (*si le noeud n'a aucun coup possible et qu'il ne reste aucun noeud à visiter alors la partie est insoluble *)
           if ( (list_fils=[]) && (States.is_empty etat_restant)) 
             then {list_coup = noeud.historique ; statut = INSOLUBLE} 
-          else      
-            let (etat_restant,etat_visite) = update_arbre list_fils etat_visite etat_restant in
-            let nouvelle_src = match (max_score_noeud etat_restant)with 
-                              |None -> States.min_elt  etat_restant 
-                              |Some(noeud) -> noeud
-                            in
-            let etat_restant = (States.remove nouvelle_src etat_restant) in 
-            let etat_visite = (States.add nouvelle_src etat_visite) in
+          else  
+            let etat_restant = update_arbre list_fils  etat_visite etat_restant  in 
+             (*  Printf.printf"\n*********************************Voici l'arbre \n";
+              print_arbre etat_restant;    *)
+            Printf.printf"\n***************************************************** \n";
+            let nouvelle_src = max_score_noeud etat_restant in
+            Printf.printf "\n\n\n Nouvelle source est \n" ;
+            display_noeud nouvelle_src ;
             parcours config nouvelle_src etat_restant etat_visite max_coup 
 
 
@@ -869,8 +887,8 @@ let chercher_solution config (etat_src:etat) (max_coup:int) =
     historique = [];
     profondeur=0;
     }  in display_state noeud_src.etat ;
-    let etat_restant = States.singleton noeud_src in 
-    let etat_visite = States.empty  in 
+    let etat_restant = States.singleton noeud_src  in 
+    let etat_visite = States.empty in 
     let strategie =  parcours config noeud_src etat_restant etat_visite max_coup
     in strategie 
 
@@ -887,7 +905,7 @@ let statut_to_string statut =
 
 
 let read_solution_file conf etat  = match conf.mode with
-|Search(sol)-> let strat = chercher_solution conf etat 20 in Printf.printf "%s" (statut_to_string strat.statut)
+|Search(sol)-> let strat = chercher_solution conf etat 5 in Printf.printf "%s" (statut_to_string strat.statut)
 |Check(sol) -> 
   (*ovrir le fichier solution*)
   let myfile= open_in sol in
@@ -909,7 +927,7 @@ let read_solution_file conf etat  = match conf.mode with
 let treat_game conf =
 
   let permut = XpatRandom.shuffle conf.seed in
-  Printf.printf "Voici juste la permutation de graine %d:\n" conf.seed;
+  (* Printf.printf "Voici juste la permutation de graine %d:\n" conf.seed; *)
   (* List.iter (fun n -> Printf.printf "%s "( Card.to_string (Card.of_num n)))permut;
   print_newline (); *)
   let etat = init_game conf.game permut in 
