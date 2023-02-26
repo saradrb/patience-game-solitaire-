@@ -4,7 +4,7 @@ KADEM Hocine
 DORBANE Sara
 
 
-LES STRUCTURES CREE : 
+LES STRUCTURES CREES : 
 ---------------------
 
 - type game = Freecell | Seahaven | Midnight | Baker
@@ -76,7 +76,7 @@ regle est un type enregistrement qui a trois champs : coup_V de type coup_v, cou
 
 
 
-LES FONCTION CREE : 
+LES FONCTIONS CREES : 
 ---------------------
 
 -FONCTION DE CREATION ET MODIFICATION D'UN ETAT : 
@@ -123,7 +123,7 @@ Sinon, elle utilise un match pour vérifier si il y a encore des cartes dans la 
 Ainsi cette fonction permet de remplir les n premiers registres de l'array avec les n premières cartes de la liste, en utilisant une récursion.
 
 
-FONCTION DE DISTRIBUTION DE CARTE 
+FONCTIONS DE DISTRIBUTION DE CARTES 
 ---------------------------------
 
 - let distribution_sv etat permut =
@@ -152,7 +152,7 @@ la fonction maj_depot est utilisée pour mettre à jour un dépôt spécifique e
 La fonction utilise d'abord la fonction PArray.get pour récupérer le depôt a mettre à jour. Ensuite, elle utilise la fonction PArray.set pour le mettre à jour en l'augmentant de 1. Enfin, elle retourne la structure depot avec le depôt mis a jour.
 
 
-FONCTION D'AFFICHAGE 
+FONCTIONS D'AFFICHAGE 
 --------------------
 
 - let print_col list_card : 'a list -> unit
@@ -287,7 +287,7 @@ La fonction depot_full prend un dépôt en entrée, une représentation de l'ét
 cette fonction prend en entrée une ligne de solution (sous forme d'une chaine de caractère), un état, un numéro de coup et un nom de jeu. Elle utilise la fonction string_to_action pour convertir les chaine de caractères en actions, puis utilise "validate_coup" pour vérifier si l'action est valide. Si elle est valide, la fonction effectue le coup avec la fonction coup, puis normalise l'état avec la fonction "normalize". Si elle n'est pas valide, elle affiche un message d'erreur et termine le programme.
 
 
-FONCTION UTILITAIRES:
+FONCTIONS UTILITAIRES:
 ---------------------
 
 - let sort_reg reg_array : registres option -> registres option
